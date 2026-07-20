@@ -8,7 +8,7 @@
 <style>
   :root{
     --bg:#f2f2f7; --panel:#ffffff; --panel-2:rgba(120,120,128,.10); --ink:#1c1c1e; --muted:#8e8e93;
-    --line:rgba(60,60,67,.14); --chk:#c7c7cc; --accent:#007aff; --accent-ink:#fff; --accent-soft:rgba(0,122,255,.12);
+    --line:rgba(60,60,67,.14); --chk:#c7c7cc; --accent:#007aff; --seg-thumb:#ffffff; --accent-ink:#fff; --accent-soft:rgba(0,122,255,.12);
     --green:#34c759; --green-soft:rgba(52,199,89,.15); --red:#ff3b30; --orange:#ff9500;
     --shadow:0 1px 2px rgba(0,0,0,.03),0 5px 18px rgba(0,0,0,.05);
     --radius:16px;
@@ -17,7 +17,7 @@
   @media (prefers-color-scheme: dark){
     :root{
       --bg:#000000; --panel:#1c1c1e; --panel-2:rgba(120,120,128,.18); --ink:#ffffff; --muted:#98989f;
-      --line:rgba(84,84,88,.48); --chk:#48484a; --accent:#0a84ff; --accent-ink:#fff; --accent-soft:rgba(10,132,255,.20);
+      --line:rgba(84,84,88,.48); --chk:#48484a; --accent:#0a84ff; --seg-thumb:#636366; --accent-ink:#fff; --accent-soft:rgba(10,132,255,.20);
       --green:#30d158; --green-soft:rgba(48,209,88,.20); --red:#ff453a; --orange:#ff9f0a;
       --shadow:0 0 0 0 rgba(0,0,0,0);
       --card-yellow-bg:#3a3423; --card-green-bg:#20351f; --card-blue-bg:#1c2f43; --card-pink-bg:#3a2530;
@@ -25,14 +25,14 @@
   }
   :root[data-theme="dark"]{
     --bg:#000000; --panel:#1c1c1e; --panel-2:rgba(120,120,128,.18); --ink:#ffffff; --muted:#98989f;
-    --line:rgba(84,84,88,.48); --chk:#48484a; --accent:#0a84ff; --accent-ink:#fff; --accent-soft:rgba(10,132,255,.20);
+    --line:rgba(84,84,88,.48); --chk:#48484a; --accent:#0a84ff; --seg-thumb:#636366; --accent-ink:#fff; --accent-soft:rgba(10,132,255,.20);
     --green:#30d158; --green-soft:rgba(48,209,88,.20); --red:#ff453a; --orange:#ff9f0a;
     --shadow:0 0 0 0 rgba(0,0,0,0);
     --card-yellow-bg:#3a3423; --card-green-bg:#20351f; --card-blue-bg:#1c2f43; --card-pink-bg:#3a2530;
   }
   :root[data-theme="light"]{
     --bg:#f2f2f7; --panel:#ffffff; --panel-2:rgba(120,120,128,.10); --ink:#1c1c1e; --muted:#8e8e93;
-    --line:rgba(60,60,67,.14); --chk:#c7c7cc; --accent:#007aff; --accent-ink:#fff; --accent-soft:rgba(0,122,255,.12);
+    --line:rgba(60,60,67,.14); --chk:#c7c7cc; --accent:#007aff; --seg-thumb:#ffffff; --accent-ink:#fff; --accent-soft:rgba(0,122,255,.12);
     --green:#34c759; --green-soft:rgba(52,199,89,.15); --red:#ff3b30; --orange:#ff9500;
     --shadow:0 1px 2px rgba(0,0,0,.03),0 5px 18px rgba(0,0,0,.05);
     --card-yellow-bg:#fff4cc; --card-green-bg:#e5f8ea; --card-blue-bg:#e3f0ff; --card-pink-bg:#ffe9f0;
@@ -247,6 +247,29 @@
   .danger-link{margin-right:auto;color:var(--red);font-size:13px;padding:7px 4px}
   .danger-link:hover{text-decoration:underline}
 
+  /* ===== 计划：分段控制器 / 日程 / 日历 ===== */
+  .seg{display:inline-flex;background:var(--panel-2);border-radius:9px;padding:2px;gap:2px;margin-bottom:18px}
+  .seg-btn{padding:6px 22px;border-radius:7px;font-size:13.5px;font-weight:500;color:var(--ink);transition:background .15s}
+  .seg-btn.active{background:var(--seg-thumb);box-shadow:0 1px 3px rgba(0,0,0,.14);font-weight:600}
+  .plan-day{padding:8px 10px;max-width:620px}
+  .plan-day-list{list-style:none;display:flex;flex-direction:column}
+  .plan-day-item{display:flex;align-items:center;gap:12px;padding:11px 8px;border-radius:10px}
+  .plan-day-item+.plan-day-item{border-top:1px solid var(--line)}
+  .plan-day-item:hover{background:var(--panel-2)}
+  .pd-time{font-size:13px;font-weight:600;color:var(--accent);font-variant-numeric:tabular-nums;min-width:44px}
+  .pd-text{flex:1;word-break:break-word}
+  .add-plan-row{width:100%;color:var(--accent);font-weight:600;font-size:14px;padding:12px;border-radius:10px;text-align:center}
+  .add-plan-row:hover{background:var(--accent-soft)}
+  .cal-wrap{max-width:480px;margin-bottom:18px;background:var(--panel);border-radius:16px;box-shadow:var(--shadow);padding:14px}
+  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+  .cal-dow{text-align:center;font-size:11px;color:var(--muted);font-weight:600;padding-bottom:2px}
+  .cal-cell{aspect-ratio:1;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:14px;color:var(--ink);background:transparent}
+  .cal-cell.other{opacity:.32}
+  .cal-cell.today{color:var(--accent);font-weight:700}
+  .cal-cell.sel{background:var(--accent);color:#fff;font-weight:700}
+  .cal-dot{width:5px;height:5px;border-radius:50%;background:var(--accent)}
+  .cal-cell.sel .cal-dot{background:#fff}
+
   /* ===== 底部标签栏（移动端） ===== */
   .tabbar{display:none}
   .tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0 5px;color:var(--muted);font-size:10.5px;font-weight:500}
@@ -278,6 +301,19 @@
     .view-title{font-size:25px}
     .view-head{margin-bottom:18px}
 
+    /* 计划周视图 & 笔记板：手机端改为竖向一行行，禁止横向滚动 */
+    .week-scroll{overflow-x:visible}
+    .week-grid{display:flex;flex-direction:column;gap:12px;min-width:0}
+    .day-col{min-height:auto}
+    .board-scroll{overflow-x:visible}
+    .board{flex-direction:column;min-height:0;align-items:stretch}
+    .kcol{width:auto}
+    .add-col{width:auto}
+    .seg{display:flex;width:100%}
+    .seg-btn{flex:1;text-align:center;padding:8px 0}
+    .cal-wrap{max-width:none}
+    .plan-day{max-width:none}
+
     .tabbar{
       display:flex;position:fixed;left:0;right:0;bottom:0;z-index:40;
       background:color-mix(in srgb,var(--panel) 80%,transparent);
@@ -304,7 +340,7 @@
   <aside class="sidebar">
     <div class="logo">i<span>Book</span></div>
     <button class="nav-btn" data-action="nav" data-view="daily"><span class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M19.4 4.6l-1.8 1.8M6.4 17.6l-1.8 1.8"/></svg></span><span class="label">每日待办</span></button>
-    <button class="nav-btn" data-action="nav" data-view="week"><span class="ico"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3.5"/><path d="M3.5 10h17M8 2.5v4M16 2.5v4"/></svg></span><span class="label">周计划</span></button>
+    <button class="nav-btn" data-action="nav" data-view="week"><span class="ico"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3.5"/><path d="M3.5 10h17M8 2.5v4M16 2.5v4"/></svg></span><span class="label">计划</span></button>
     <button class="nav-btn" data-action="nav" data-view="goals"><span class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg></span><span class="label">目标追踪</span></button>
     <button class="nav-btn" data-action="nav" data-view="board"><span class="ico"><svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="7.2" height="16" rx="2.2"/><rect x="13.3" y="4" width="7.2" height="10" rx="2.2"/></svg></span><span class="label">笔记板</span></button>
     <div class="sidebar-foot">
@@ -359,16 +395,21 @@
     <section class="view" id="view-week">
       <div class="view-head">
         <div>
-          <div class="view-title">周计划</div>
-          <div class="view-sub" id="week-range"></div>
+          <div class="view-title">计划</div>
+          <div class="view-sub" id="plan-range"></div>
         </div>
         <div class="day-nav">
-          <button class="btn small" data-action="week-prev">‹ 上一周</button>
-          <button class="btn small primary" data-action="week-today">本周</button>
-          <button class="btn small" data-action="week-next">下一周 ›</button>
+          <button class="btn small" data-action="plan-prev">‹</button>
+          <button class="btn small primary" data-action="plan-today">今天</button>
+          <button class="btn small" data-action="plan-next">›</button>
         </div>
       </div>
-      <div class="week-scroll"><div class="week-grid" id="week-grid"></div></div>
+      <div class="seg" id="plan-seg">
+        <button class="seg-btn" data-action="plan-mode" data-mode="day">日</button>
+        <button class="seg-btn active" data-action="plan-mode" data-mode="week">周</button>
+        <button class="seg-btn" data-action="plan-mode" data-mode="month">月</button>
+      </div>
+      <div id="plan-body"></div>
     </section>
 
     <!-- ============ 目标追踪 ============ -->
@@ -495,7 +536,7 @@ const cnDate = s => { const d = parse(s); return `${d.getFullYear()}年${d.getMo
 const mondayOf = s => { const d = parse(s); const off = (d.getDay() + 6) % 7; d.setDate(d.getDate() - off); return fmt(d); };
 
 /* ================= 状态 ================= */
-const state = { view: 'daily', date: todayStr(), weekAnchor: todayStr() };
+const state = { view: 'daily', date: todayStr(), planDate: todayStr(), planMode: 'week' };
 const $ = sel => document.querySelector(sel);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -546,13 +587,44 @@ function renderDaily() {
 }
 
 /* ================= 渲染：周计划 ================= */
-function renderWeek() {
-  const mon = mondayOf(state.weekAnchor);
+function renderPlan() {
+  document.querySelectorAll('#plan-seg .seg-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.mode === state.planMode));
+  if (state.planMode === 'day') renderPlanDay();
+  else if (state.planMode === 'month') renderPlanMonth();
+  else renderPlanWeek();
+}
+function shiftPlan(dir) {
+  if (state.planMode === 'day') state.planDate = addDays(state.planDate, dir);
+  else if (state.planMode === 'week') state.planDate = addDays(state.planDate, dir * 7);
+  else { const d = parse(state.planDate); d.setDate(1); d.setMonth(d.getMonth() + dir); state.planDate = fmt(d); }
+  renderPlan();
+}
+function planDayList(dstr) {
+  const items = (data.plans[dstr] || []).slice()
+    .sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
+  return `<div class="card plan-day">
+    ${items.length ? `<ul class="plan-day-list">${items.map(p => `
+      <li class="plan-day-item">
+        <span class="pd-time">${p.time ? esc(p.time) : '全天'}</span>
+        <span class="pd-text">${esc(p.text)}</span>
+        <button class="del-btn" data-action="del-plan" data-date="${dstr}" data-id="${p.id}">✕</button>
+      </li>`).join('')}</ul>` : '<div class="empty">这一天还没有安排 ☕️</div>'}
+    <button class="add-plan-row" data-action="add-plan" data-date="${dstr}">＋ 添加安排</button>
+  </div>`;
+}
+function renderPlanDay() {
+  const dstr = state.planDate;
+  $('#plan-range').textContent = cnDate(dstr) + (dstr === todayStr() ? ' · 今天' : '');
+  $('#plan-body').innerHTML = planDayList(dstr);
+}
+function renderPlanWeek() {
+  const mon = mondayOf(state.planDate);
   const sun = addDays(mon, 6);
-  const m = parse(mon), s = parse(sun);
-  $('#week-range').textContent =
-    `${m.getFullYear()}年${m.getMonth() + 1}月${m.getDate()}日 — ${s.getMonth() + 1}月${s.getDate()}日`;
-  let html = '';
+  const m = parse(mon), s2 = parse(sun);
+  $('#plan-range').textContent =
+    `${m.getFullYear()}年${m.getMonth() + 1}月${m.getDate()}日 — ${s2.getMonth() + 1}月${s2.getDate()}日`;
+  let html = '<div class="week-scroll"><div class="week-grid">';
   for (let i = 0; i < 7; i++) {
     const dstr = addDays(mon, i);
     const d = parse(dstr);
@@ -575,7 +647,30 @@ function renderWeek() {
       </div>
     </div>`;
   }
-  $('#week-grid').innerHTML = html;
+  html += '</div></div>';
+  $('#plan-body').innerHTML = html;
+}
+function renderPlanMonth() {
+  const d = parse(state.planDate);
+  const year = d.getFullYear(), month = d.getMonth();
+  $('#plan-range').textContent = `${year}年${month + 1}月`;
+  const startOff = (new Date(year, month, 1).getDay() + 6) % 7;   // 周一为一周起点
+  const gridStart = new Date(year, month, 1 - startOff);
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const weeks = Math.ceil((startOff + daysInMonth) / 7);
+  let cells = ['一', '二', '三', '四', '五', '六', '日'].map(w => `<div class="cal-dow">${w}</div>`).join('');
+  for (let i = 0; i < weeks * 7; i++) {
+    const cur = new Date(gridStart); cur.setDate(gridStart.getDate() + i);
+    const cstr = fmt(cur);
+    const cls = ['cal-cell'];
+    if (cur.getMonth() !== month) cls.push('other');
+    if (cstr === todayStr()) cls.push('today');
+    if (cstr === state.planDate) cls.push('sel');
+    const has = (data.plans[cstr] || []).length;
+    cells += `<button class="${cls.join(' ')}" data-action="plan-pick" data-date="${cstr}">
+      <span>${cur.getDate()}</span>${has ? '<span class="cal-dot"></span>' : ''}</button>`;
+  }
+  $('#plan-body').innerHTML = `<div class="cal-wrap"><div class="cal">${cells}</div></div>` + planDayList(state.planDate);
 }
 
 /* ================= 渲染：目标追踪 ================= */
@@ -720,7 +815,7 @@ document.addEventListener('keydown', e => {
 });
 
 /* ================= 动作 ================= */
-const rerender = () => { renderNav(); renderDaily(); renderWeek(); renderGoals(); renderBoard(); };
+const rerender = () => { renderNav(); renderDaily(); renderPlan(); renderGoals(); renderBoard(); };
 
 function addTask() {
   const inp = $('#task-input'); const text = inp.value.trim();
@@ -786,9 +881,11 @@ const actions = {
   },
 
   /* 周计划 */
-  'week-prev'() { state.weekAnchor = addDays(state.weekAnchor, -7); renderWeek(); },
-  'week-next'() { state.weekAnchor = addDays(state.weekAnchor, 7); renderWeek(); },
-  'week-today'() { state.weekAnchor = todayStr(); renderWeek(); },
+  'plan-prev'() { shiftPlan(-1); },
+  'plan-next'() { shiftPlan(1); },
+  'plan-today'() { state.planDate = todayStr(); renderPlan(); },
+  'plan-mode'(el) { state.planMode = el.dataset.mode; renderPlan(); },
+  'plan-pick'(el) { state.planDate = el.dataset.date; renderPlan(); },
   'goto-day'(el) { state.date = el.dataset.date; state.view = 'daily'; renderDaily(); renderNav(); },
   'add-plan'(el) {
     const dstr = el.dataset.date;
@@ -801,13 +898,13 @@ const actions = {
       onSubmit(v) {
         if (!v.text) return;
         (data.plans[dstr] = data.plans[dstr] || []).push({ id: uid(), time: v.time, text: v.text });
-        save(); renderWeek();
+        save(); renderPlan();
       },
     });
   },
   'del-plan'(el) {
     data.plans[el.dataset.date] = (data.plans[el.dataset.date] || []).filter(p => p.id !== el.dataset.id);
-    save(); renderWeek();
+    save(); renderPlan();
   },
 
   /* 目标 */
