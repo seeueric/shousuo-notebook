@@ -987,7 +987,7 @@ async function cloudPull(interactive) {
 function acctModalHTML() {
   if (!cloudAvailable) return `
     <p class="sync-p">账号云同步需要在在线版里使用：</p>
-    <p class="sync-p"><b>https://shousuo-notebook.pages.dev</b></p>
+    <p class="sync-p"><b>https://ibook.pages.dev</b></p>
     <p class="sync-note">本地版可以用「导出 / 导入」手动备份、迁移数据。</p>`;
   if (cloud.token) return `
     <div class="sync-kv">
@@ -1060,7 +1060,7 @@ async function doAuth(kind) {
     renderCloudUI();
   } catch (e) {
     err.textContent = e.status === 404
-      ? '此网址不含云服务，请使用 shousuo-notebook.pages.dev'
+      ? '此网址不含云服务，请使用 ibook.pages.dev'
       : (e.payload && e.payload.error) || '网络错误，稍后再试';
   }
 }
