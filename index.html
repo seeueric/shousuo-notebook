@@ -3,7 +3,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>iBook</title>
 <style>
   :root{
@@ -247,19 +247,55 @@
   .danger-link{margin-right:auto;color:var(--red);font-size:13px;padding:7px 4px}
   .danger-link:hover{text-decoration:underline}
 
-  /* ===== 响应式 ===== */
+  /* ===== 底部标签栏（移动端） ===== */
+  .tabbar{display:none}
+  .tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0 5px;color:var(--muted);font-size:10.5px;font-weight:500}
+  .tab-btn .ico svg{width:25px;height:25px;stroke-width:1.7}
+  .tab-btn.active{color:var(--accent)}
+  .tab-btn.active .ico svg{stroke-width:2.1}
+
+  /* ===== 设置页（iOS 分组列表） ===== */
+  .settings-group{background:var(--panel);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;margin-bottom:20px;max-width:540px}
+  .set-row{display:flex;align-items:center;gap:13px;padding:13px 15px;width:100%;text-align:left}
+  .set-row+.set-row{border-top:1px solid var(--line)}
+  .set-row:active{background:var(--panel-2)}
+  .set-ico{width:29px;height:29px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff}
+  .set-ico svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  .set-ico.blue{background:var(--accent)} .set-ico.gray{background:#8e8e93} .set-ico.green{background:var(--green)} .set-ico.orange{background:var(--orange)}
+  .set-main{flex:1;min-width:0}
+  .set-title{font-size:15px;font-weight:500;display:block}
+  .set-sub{font-size:12px;color:var(--muted);margin-top:1px;display:block}
+  .set-arrow{color:var(--chk);flex-shrink:0;display:flex}
+  .set-arrow svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  .sheet-grab{display:none}
+
+  /* ===== 响应式：手机端切换为 iOS 式底部标签栏 + 底部面板 ===== */
   @media (max-width:820px){
     .app{flex-direction:column}
-    .sidebar{width:100%;height:auto;position:static;flex-direction:row;align-items:center;flex-wrap:wrap;
-      padding:12px 14px;border-right:none;border-bottom:1px solid var(--line);gap:2px}
-    .logo{padding:0 10px 0 2px;font-size:17px}
-    .nav-btn{padding:9px 11px}
-    .nav-btn .label{display:none}
-    .sidebar-foot{margin-top:0;margin-left:auto;flex-direction:row;padding-top:0;border-top:none}
-    .foot-btn .label{display:none}
-    .main{padding:20px 16px 50px}
+    .sidebar{display:none}
+    .main{padding:max(env(safe-area-inset-top),16px) 16px calc(74px + env(safe-area-inset-bottom));max-width:none}
     .daily-grid{grid-template-columns:1fr}
+    .view-title{font-size:25px}
+    .view-head{margin-bottom:18px}
+
+    .tabbar{
+      display:flex;position:fixed;left:0;right:0;bottom:0;z-index:40;
+      background:color-mix(in srgb,var(--panel) 80%,transparent);
+      backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);
+      border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);
+    }
+
+    /* 弹窗 → 从底部滑出的操作面板 */
+    .overlay{align-items:flex-end;padding:0}
+    .modal{
+      max-width:none;border-radius:22px 22px 0 0;padding:6px 20px calc(22px + env(safe-area-inset-bottom));
+      animation:sheetUp .3s cubic-bezier(.32,.72,0,1);will-change:transform;
+    }
+    .sheet-grab{display:block;width:38px;height:5px;border-radius:99px;background:var(--chk);margin:5px auto 12px}
+    .modal h3{text-align:center}
   }
+  @keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  @media (prefers-reduced-motion:reduce){.modal{animation:none}}
 </style>
 </head>
 <body>
@@ -276,7 +312,6 @@
       <button class="foot-btn" data-action="toggle-theme"><span class="ico" id="theme-ico"></span><span class="label">深浅模式</span></button>
       <button class="foot-btn" data-action="export"><span class="ico"><svg viewBox="0 0 24 24"><path d="M12 14.5V3.5M8.5 7L12 3.5 15.5 7"/><path d="M7 11H6a3 3 0 0 0-3 3v4a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3v-4a3 3 0 0 0-3-3h-1"/></svg></span><span class="label">导出数据</span></button>
       <button class="foot-btn" data-action="import"><span class="ico"><svg viewBox="0 0 24 24"><path d="M12 3.5v11M8.5 11L12 14.5 15.5 11"/><path d="M7 11H6a3 3 0 0 0-3 3v4a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3v-4a3 3 0 0 0-3-3h-1"/></svg></span><span class="label">导入数据</span></button>
-      <input type="file" id="import-file" accept=".json,application/json" hidden>
     </div>
   </aside>
 
@@ -358,12 +393,55 @@
       </div>
       <div class="board-scroll"><div class="board" id="board"></div></div>
     </section>
+
+    <!-- ============ 设置 ============ -->
+    <section class="view" id="view-settings">
+      <div class="view-head"><div>
+        <div class="view-title">设置</div>
+        <div class="view-sub">账号 · 外观 · 数据备份</div>
+      </div></div>
+      <div class="settings-group">
+        <button class="set-row" data-action="acct-open">
+          <span class="set-ico blue"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5c1.7-3.4 4.4-5 7.5-5s5.8 1.6 7.5 5"/></svg></span>
+          <span class="set-main"><span class="set-title" id="acct-label-m">登录 / 注册</span><span class="set-sub">云端同步 · 多端互通</span></span>
+          <span class="set-arrow"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>
+        </button>
+        <button class="set-row" data-action="toggle-theme">
+          <span class="set-ico gray"><span class="ico" id="theme-ico-m"></span></span>
+          <span class="set-main"><span class="set-title">深浅模式</span><span class="set-sub" id="theme-sub-m">跟随系统</span></span>
+          <span class="set-arrow"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>
+        </button>
+      </div>
+      <div class="settings-group">
+        <button class="set-row" data-action="export">
+          <span class="set-ico green"><svg viewBox="0 0 24 24"><path d="M12 14.5V3.5M8.5 7L12 3.5 15.5 7"/><path d="M7 11H6a3 3 0 0 0-3 3v4a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3v-4a3 3 0 0 0-3-3h-1"/></svg></span>
+          <span class="set-main"><span class="set-title">导出数据</span><span class="set-sub">备份为 JSON 文件</span></span>
+          <span class="set-arrow"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>
+        </button>
+        <button class="set-row" data-action="import">
+          <span class="set-ico orange"><svg viewBox="0 0 24 24"><path d="M12 3.5v11M8.5 11L12 14.5 15.5 11"/><path d="M7 11H6a3 3 0 0 0-3 3v4a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3v-4a3 3 0 0 0-3-3h-1"/></svg></span>
+          <span class="set-main"><span class="set-title">导入数据</span><span class="set-sub">从备份文件恢复</span></span>
+          <span class="set-arrow"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>
+        </button>
+      </div>
+    </section>
   </main>
+
+  <!-- 底部标签栏（移动端） -->
+  <nav class="tabbar">
+    <button class="tab-btn" data-action="nav" data-view="daily"><span class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M19.4 4.6l-1.8 1.8M6.4 17.6l-1.8 1.8"/></svg></span>待办</button>
+    <button class="tab-btn" data-action="nav" data-view="week"><span class="ico"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3.5"/><path d="M3.5 10h17M8 2.5v4M16 2.5v4"/></svg></span>计划</button>
+    <button class="tab-btn" data-action="nav" data-view="goals"><span class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg></span>目标</button>
+    <button class="tab-btn" data-action="nav" data-view="board"><span class="ico"><svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="7.2" height="16" rx="2.2"/><rect x="13.3" y="4" width="7.2" height="10" rx="2.2"/></svg></span>笔记</button>
+    <button class="tab-btn" data-action="nav" data-view="settings"><span class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H10a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V10a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span>设置</button>
+  </nav>
 </div>
 
+<input type="file" id="import-file" accept=".json,application/json" hidden>
 <!-- 通用弹窗 -->
 <div class="overlay" id="overlay">
   <div class="modal">
+    <div class="sheet-grab"></div>
     <h3 id="modal-title"></h3>
     <div id="modal-body"></div>
     <div class="modal-actions">
@@ -423,7 +501,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 
 /* ================= 渲染：导航 ================= */
 function renderNav() {
-  document.querySelectorAll('.nav-btn').forEach(b =>
+  document.querySelectorAll('.nav-btn, .tab-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.view === state.view));
   document.querySelectorAll('.view').forEach(v =>
     v.classList.toggle('active', v.id === 'view-' + state.view));
@@ -611,6 +689,29 @@ $('#modal-body').addEventListener('click', e => {
   wrap.dataset.value = sw.dataset.swatch;
   wrap.querySelectorAll('.swatch').forEach(s => s.classList.toggle('sel', s === sw));
 });
+/* 移动端：在面板顶部向下拖动可关闭 */
+(function () {
+  const overlay = $('#overlay');
+  let startY = null, dy = 0, panel = null;
+  overlay.addEventListener('touchstart', e => {
+    if (window.innerWidth > 820) return;
+    if (e.target.closest('input,textarea,select,button,.swatches')) return;
+    panel = overlay.querySelector('.modal'); if (!panel) return;
+    startY = e.touches[0].clientY; dy = 0; panel.style.transition = 'none';
+  }, { passive: true });
+  overlay.addEventListener('touchmove', e => {
+    if (startY === null || !panel) return;
+    dy = e.touches[0].clientY - startY;
+    if (dy > 0) panel.style.transform = 'translateY(' + dy + 'px)';
+  }, { passive: true });
+  overlay.addEventListener('touchend', () => {
+    if (startY === null || !panel) return;
+    panel.style.transition = '';
+    if (dy > 90) closeModal();
+    panel.style.transform = '';
+    startY = null; panel = null; dy = 0;
+  });
+})();
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeModal();
   if (e.key === 'Enter' && modalSubmit && e.target.tagName !== 'TEXTAREA' && $('#overlay').classList.contains('show')) {
@@ -931,9 +1032,11 @@ async function api(path, opts = {}) {
 }
 
 function renderCloudUI() {
-  $('#acct-label').textContent = cloud.token
+  const txt = cloud.token
     ? cloud.user + (cloudStatus === 'error' ? '（同步出错）' : '')
     : '登录 / 注册';
+  const a = $('#acct-label'); if (a) a.textContent = txt;
+  const m = $('#acct-label-m'); if (m) m.textContent = txt;
 }
 function clearCloudSession() {
   cloud = { token: '', user: '' };
@@ -1133,7 +1236,12 @@ function effectiveTheme() {
 function applyTheme() {
   if (data.theme === 'dark' || data.theme === 'light')
     document.documentElement.dataset.theme = data.theme;
-  $('#theme-ico').innerHTML = effectiveTheme() === 'dark' ? ICON_SUN : ICON_MOON;
+  const dark = effectiveTheme() === 'dark';
+  const svg = dark ? ICON_SUN : ICON_MOON;
+  const a = $('#theme-ico'); if (a) a.innerHTML = svg;
+  const b = $('#theme-ico-m'); if (b) b.innerHTML = svg;
+  const sub = $('#theme-sub-m');
+  if (sub) sub.textContent = data.theme === 'dark' ? '深色' : data.theme === 'light' ? '浅色' : '跟随系统';
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
 applyTheme();
