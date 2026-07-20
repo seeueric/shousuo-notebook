@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<!-- 手搓笔记本 · iOS 风格版（账号云同步，导出/导入作备份） -->
+<!-- iBook · iOS 风格记录本（账号云同步，导出/导入作备份） -->
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>手搓笔记本</title>
+<title>iBook</title>
 <style>
   :root{
     --bg:#f2f2f7; --panel:#ffffff; --panel-2:rgba(120,120,128,.10); --ink:#1c1c1e; --muted:#8e8e93;
@@ -266,7 +266,7 @@
 <div class="app">
   <!-- 侧边栏 -->
   <aside class="sidebar">
-    <div class="logo">手搓<span>笔记本</span></div>
+    <div class="logo">i<span>Book</span></div>
     <button class="nav-btn" data-action="nav" data-view="daily"><span class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M19.4 4.6l-1.8 1.8M6.4 17.6l-1.8 1.8"/></svg></span><span class="label">每日待办</span></button>
     <button class="nav-btn" data-action="nav" data-view="week"><span class="ico"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3.5"/><path d="M3.5 10h17M8 2.5v4M16 2.5v4"/></svg></span><span class="label">周计划</span></button>
     <button class="nav-btn" data-action="nav" data-view="goals"><span class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg></span><span class="label">目标追踪</span></button>
@@ -652,7 +652,7 @@ const actions = {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `手搓笔记本备份-${todayStr()}.json`;
+    a.download = `iBook备份-${todayStr()}.json`;
     a.click(); URL.revokeObjectURL(a.href);
   },
   import() { $('#import-file').click(); },
