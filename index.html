@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- 手搓笔记本 · 账号云同步 + 恢复码版 -->
+<!-- 手搓笔记本 · 账号云同步版（同步只走账号，导出/导入作备份） -->
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -220,15 +220,8 @@
   }
   .add-col:hover{color:var(--accent);border-color:var(--accent)}
 
-  /* ===== iCloud 同步 ===== */
-  .sync-banner{
-    display:flex;align-items:center;gap:12px;background:var(--accent-soft);
-    border:1px solid var(--accent);border-radius:10px;padding:10px 14px;
-    margin-bottom:18px;font-size:13.5px;
-  }
-  .sync-banner .grow{flex:1}
+  /* ===== 账号 / 弹窗提示 ===== */
   .sync-p{font-size:13.5px;margin-bottom:12px}
-  .sync-steps{font-size:13px;color:var(--muted);padding-left:20px;margin-bottom:14px;display:flex;flex-direction:column;gap:4px}
   .sync-actions{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
   .sync-actions .btn{justify-content:center;padding:10px}
   .sync-note{font-size:12.5px;color:var(--muted);background:var(--panel-2);border-radius:8px;padding:9px 12px}
@@ -289,7 +282,6 @@
     <button class="nav-btn" data-action="nav" data-view="board"><span class="ico">📌</span><span class="label">笔记板</span></button>
     <div class="sidebar-foot">
       <button class="foot-btn" data-action="acct-open"><span class="ico">👤</span><span class="label" id="acct-label">登录 / 注册</span></button>
-      <button class="foot-btn" data-action="sync-open"><span class="ico">☁️</span><span class="label" id="sync-label">iCloud 同步</span></button>
       <button class="foot-btn" data-action="toggle-theme"><span class="ico" id="theme-ico">🌙</span><span class="label">深浅模式</span></button>
       <button class="foot-btn" data-action="export"><span class="ico">📤</span><span class="label">导出数据</span></button>
       <button class="foot-btn" data-action="import"><span class="ico">📥</span><span class="label">导入数据</span></button>
@@ -298,11 +290,6 @@
   </aside>
 
   <main class="main">
-    <div class="sync-banner" id="sync-banner" hidden>
-      <span>☁️</span>
-      <span class="grow">检测到已绑定的 iCloud 数据文件，需要重新授权后才能继续自动同步。</span>
-      <button class="btn small primary" data-action="sync-grant">恢复同步</button>
-    </div>
     <!-- ============ 每日待办 ============ -->
     <section class="view" id="view-daily">
       <div class="view-head">
@@ -426,7 +413,7 @@ data.plans = data.plans || {}; data.goals = data.goals || [];
 data.updatedAt = data.updatedAt || 0;
 
 const persistLocal = () => { try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch (e) {} };
-const save = () => { data.updatedAt = Date.now(); persistLocal(); scheduleFileWrite(); scheduleCloudPush(); };
+const save = () => { data.updatedAt = Date.now(); persistLocal(); scheduleCloudPush(); };
 
 /* ================= 日期工具 ================= */
 const pad = n => String(n).padStart(2, '0');
@@ -927,189 +914,6 @@ document.addEventListener('drop', e => {
   save(); renderBoard();
 });
 
-/* ================= iCloud Drive 文件同步 ================= */
-/* 原理：数据绑定到 iCloud Drive 里的一个 JSON 文件，改动自动写入，
-   iCloud 负责把文件同步到所有设备。需要浏览器支持 File System Access API（Chrome/Edge）。 */
-const fsSupported = 'showSaveFilePicker' in window;
-let fileHandle = null;
-let syncStatus = 'off';           // off | need-permission | on | error
-let lastSyncAt = 0;
-let writeTimer = null;
-
-function idbOpen() {
-  return new Promise((res, rej) => {
-    const r = indexedDB.open('shousuo-fs', 1);
-    r.onupgradeneeded = () => r.result.createObjectStore('kv');
-    r.onsuccess = () => res(r.result);
-    r.onerror = () => rej(r.error);
-  });
-}
-async function idbSet(k, v) {
-  const db = await idbOpen();
-  return new Promise((res, rej) => {
-    const tx = db.transaction('kv', 'readwrite');
-    tx.objectStore('kv').put(v, k);
-    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
-  });
-}
-async function idbGet(k) {
-  const db = await idbOpen();
-  return new Promise((res, rej) => {
-    const rq = db.transaction('kv', 'readonly').objectStore('kv').get(k);
-    rq.onsuccess = () => res(rq.result); rq.onerror = () => rej(rq.error);
-  });
-}
-async function idbDel(k) {
-  const db = await idbOpen();
-  return new Promise((res, rej) => {
-    const tx = db.transaction('kv', 'readwrite');
-    tx.objectStore('kv').delete(k);
-    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
-  });
-}
-
-function renderSyncUI() {
-  const label = $('#sync-label');
-  const t = lastSyncAt ? new Date(lastSyncAt).toTimeString().slice(0, 5) : '';
-  label.textContent =
-    syncStatus === 'on' ? `已同步 ${t}` :
-    syncStatus === 'need-permission' ? '恢复 iCloud 同步' :
-    syncStatus === 'error' ? '同步出错' : 'iCloud 同步';
-  $('#sync-banner').hidden = syncStatus !== 'need-permission';
-}
-
-function scheduleFileWrite() {
-  if (!fileHandle || syncStatus === 'need-permission') return;
-  clearTimeout(writeTimer);
-  writeTimer = setTimeout(writeFile, 800);
-}
-async function writeFile() {
-  if (!fileHandle) return;
-  clearTimeout(writeTimer); writeTimer = null;
-  try {
-    const w = await fileHandle.createWritable();
-    await w.write(JSON.stringify(data, null, 2));
-    await w.close();
-    lastSyncAt = Date.now(); syncStatus = 'on';
-  } catch (e) { syncStatus = 'error'; }
-  renderSyncUI();
-}
-/* 读文件：谁新用谁（文件更新 → 载入；本地更新 → 稍后由写入覆盖文件） */
-async function syncRead() {
-  if (!fileHandle) return;
-  try {
-    const f = await fileHandle.getFile();
-    const txt = await f.text();
-    if (txt.trim()) {
-      const remote = JSON.parse(txt);
-      if (remote.board && Array.isArray(remote.board.columns)) {
-        if ((remote.updatedAt || 0) > (data.updatedAt || 0)) {
-          data = remote;
-          data.tasks = data.tasks || {}; data.habits = data.habits || [];
-          data.plans = data.plans || {}; data.goals = data.goals || [];
-          persistLocal(); applyTheme(); rerender();
-        } else if ((data.updatedAt || 0) > (remote.updatedAt || 0)) {
-          scheduleFileWrite();
-        }
-      }
-    } else if (data.updatedAt) {
-      scheduleFileWrite();     // 空文件：把本地数据写进去
-    }
-    lastSyncAt = Date.now(); syncStatus = 'on';
-  } catch (e) { syncStatus = 'error'; }
-  renderSyncUI();
-}
-async function bindHandle(h) {
-  fileHandle = h;
-  try { await idbSet('handle', h); } catch (e) {}
-  await syncRead();
-}
-async function restoreSync() {
-  if (!fsSupported) return;
-  try { fileHandle = (await idbGet('handle')) || null; } catch (e) { return; }
-  if (!fileHandle) return;
-  const p = await fileHandle.queryPermission({ mode: 'readwrite' });
-  if (p === 'granted') await syncRead();
-  else { syncStatus = 'need-permission'; renderSyncUI(); }
-}
-
-const pickerTypes = [{ description: 'JSON 数据', accept: { 'application/json': ['.json'] } }];
-function syncModalHTML() {
-  if (!fsSupported) return `
-    <p class="sync-p">当前浏览器（如 Safari）不支持网页自动读写本地文件，有两个免费办法：</p>
-    <ol class="sync-steps">
-      <li><b>推荐：</b>用 Chrome 或 Edge 打开本应用，即可绑定 iCloud Drive 数据文件、全自动同步</li>
-      <li>继续用当前浏览器：定期「导出数据」保存到 iCloud Drive，在其它设备「导入数据」</li>
-    </ol>
-    <p class="sync-note">📱 iPhone / iPad 上同样通过「文件」App 里的 iCloud Drive 配合导出 / 导入使用。</p>`;
-  if (fileHandle) return `
-    <div class="sync-kv">
-      <span>状态：<b>${syncStatus === 'error' ? '⚠️ 出错（文件可能被移动或删除）' : syncStatus === 'need-permission' ? '待授权' : '✅ 自动同步中'}</b></span>
-      <span>数据文件：<b>${esc(fileHandle.name)}</b></span>
-      ${lastSyncAt ? `<span>最后同步：<b>${new Date(lastSyncAt).toLocaleString('zh-CN')}</b></span>` : ''}
-    </div>
-    <div class="sync-actions">
-      <button class="btn primary" data-action="sync-now">🔄 立即同步一次</button>
-      <button class="btn" data-action="sync-unbind">解除绑定</button>
-    </div>
-    <p class="sync-note">💡 只要这个文件放在 iCloud Drive 文件夹里，苹果就会自动把它同步到你所有设备。其它 Mac 用 Chrome/Edge 打开本页面并「绑定已有数据文件」即可双向同步。</p>`;
-  return `
-    <p class="sync-p">数据会保存为一个 JSON 文件，把它放进 <b>iCloud Drive</b>，苹果就会自动同步到你所有设备 —— 完全免费，不需要任何账号。</p>
-    <ol class="sync-steps">
-      <li>点下面的按钮，在弹窗中把位置选到 <b>iCloud Drive</b>（访达侧栏就有）</li>
-      <li>之后每次改动都会自动写入该文件，无需手动保存</li>
-      <li>其它设备绑定同一个文件，即可看到最新数据</li>
-    </ol>
-    <div class="sync-actions">
-      <button class="btn primary" data-action="sync-bind-create">🆕 第一次使用：创建数据文件</button>
-      <button class="btn" data-action="sync-bind-open">📂 已有数据文件：绑定它</button>
-    </div>
-    <p class="sync-note">💡 授权弹窗里选「每次访问时允许」，以后打开就不用再点了。iPhone / iPad 浏览器不支持自动读写，请在「文件」App 里配合 导出 / 导入 使用。</p>`;
-}
-
-Object.assign(actions, {
-  'sync-open'() {
-    if (fsSupported && fileHandle && syncStatus === 'need-permission') { actions['sync-grant'](); return; }
-    openModal({ title: '☁️ iCloud 同步', html: syncModalHTML(), hideOk: true });
-  },
-  async 'sync-grant'() {
-    if (!fileHandle) return;
-    const p = await fileHandle.requestPermission({ mode: 'readwrite' });
-    if (p === 'granted') await syncRead();
-    renderSyncUI();
-  },
-  async 'sync-bind-create'() {
-    try {
-      const h = await window.showSaveFilePicker({ suggestedName: '手搓笔记本数据.json', types: pickerTypes });
-      closeModal();
-      await bindHandle(h);
-      await writeFile();
-    } catch (e) { if (e.name !== 'AbortError') alert('创建失败：' + e.message); }
-  },
-  async 'sync-bind-open'() {
-    try {
-      const [h] = await window.showOpenFilePicker({ types: pickerTypes, multiple: false });
-      await h.requestPermission({ mode: 'readwrite' });
-      closeModal();
-      await bindHandle(h);
-    } catch (e) { if (e.name !== 'AbortError') alert('绑定失败：' + e.message); }
-  },
-  async 'sync-now'() { closeModal(); await syncRead(); if (syncStatus === 'on') await writeFile(); },
-  async 'sync-unbind'() {
-    if (!confirm('解除绑定后不再自动同步（文件本身不会被删除），确定？')) return;
-    fileHandle = null; syncStatus = 'off'; lastSyncAt = 0;
-    try { await idbDel('handle'); } catch (e) {}
-    closeModal(); renderSyncUI();
-  },
-});
-
-/* 切回页面时拉取最新（其它设备可能改过）；离开页面前把待写入的改动落盘 */
-document.addEventListener('visibilitychange', () => {
-  if (!fileHandle || syncStatus === 'need-permission') return;
-  if (document.visibilityState === 'visible') syncRead();
-  else if (writeTimer) writeFile();
-});
-
 /* ================= 账号云同步（Cloudflare D1） ================= */
 /* 登录后整份数据自动上传/下载，多端按 updatedAt 新者胜。仅在线版可用。 */
 const cloudAvailable = /^https?:$/.test(location.protocol);
@@ -1151,7 +955,6 @@ function adoptRemote(remote) {
   data.tasks = data.tasks || {}; data.habits = data.habits || [];
   data.plans = data.plans || {}; data.goals = data.goals || [];
   persistLocal(); applyTheme(); rerender();
-  scheduleFileWrite();          // 若绑定了 iCloud 文件，跟着更新
 }
 
 function scheduleCloudPush() {
@@ -1194,7 +997,7 @@ function acctModalHTML() {
   if (!cloudAvailable) return `
     <p class="sync-p">账号云同步需要在在线版里使用：</p>
     <p class="sync-p"><b>https://shousuo-notebook.pages.dev</b></p>
-    <p class="sync-note">本地版可以继续用「☁️ iCloud 同步」或 导出 / 导入。</p>`;
+    <p class="sync-note">本地版可以用「导出 / 导入」手动备份、迁移数据。</p>`;
   if (cloud.token) return `
     <div class="sync-kv">
       <span>当前账号：<b>${esc(cloud.user)}</b></span>
@@ -1342,7 +1145,6 @@ function applyTheme() {
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
 applyTheme();
 rerender();
-restoreSync();
 renderCloudUI();
 if (cloudAvailable && cloud.token) cloudPull();
 </script>
