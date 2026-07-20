@@ -35,6 +35,22 @@ function validCreds(username, password) {
   return null;
 }
 
+/* 恢复码：64 位随机数，格式 XXXX-XXXX-XXXX-XXXX。熵足够高，
+   用 SHA-256(盐:码) 存储即可，无需慢哈希。一次性使用，用后即换。 */
+const newRecoveryCode = () => randHex(8).toUpperCase().match(/.{4}/g).join('-');
+const normCode = s => String(s || '').replace(/[^0-9a-fA-F]/g, '').toLowerCase();
+async function sha256Hex(s) {
+  return hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)));
+}
+async function setRecovery(env, userId) {
+  const code = newRecoveryCode();
+  const salt = randHex(16);
+  const h = await sha256Hex(salt + ':' + normCode(code));
+  await env.DB.prepare('UPDATE users SET recovery_hash = ?, recovery_salt = ? WHERE id = ?')
+    .bind(h, salt, userId).run();
+  return code;
+}
+
 async function auth(request, env) {
   const h = request.headers.get('Authorization') || '';
   const token = h.startsWith('Bearer ') ? h.slice(7) : '';
@@ -64,8 +80,37 @@ async function register(request, env) {
   const passHash = await hashPassword(password, salt);
   const r = await env.DB.prepare('INSERT INTO users (username, pass_hash, salt, created_at) VALUES (?, ?, ?, ?)')
     .bind(u, passHash, salt, Date.now()).run();
-  const token = await newSession(env, r.meta.last_row_id);
-  return json({ token, username: u });
+  const userId = r.meta.last_row_id;
+  const token = await newSession(env, userId);
+  const recoveryCode = await setRecovery(env, userId);
+  return json({ token, username: u, recoveryCode });
+}
+
+async function recoveryNew(request, env) {
+  const user = await auth(request, env);
+  if (!user) return json({ error: '未登录或登录已过期' }, 401);
+  const recoveryCode = await setRecovery(env, user.id);
+  return json({ recoveryCode });
+}
+
+async function recoveryReset(request, env) {
+  const { username, code, newPassword } = await readBody(request);
+  if (typeof username !== 'string' || typeof code !== 'string' || typeof newPassword !== 'string')
+    return json({ error: '参数不对' }, 400);
+  if (newPassword.length < 6 || newPassword.length > 128) return json({ error: '新密码需要 6-128 位' }, 400);
+  const row = await env.DB.prepare('SELECT id, recovery_hash, recovery_salt FROM users WHERE username = ?')
+    .bind(username.trim()).first();
+  if (!row) return json({ error: '用户名不存在' }, 401);
+  if (!row.recovery_hash) return json({ error: '该账号还没有生成过恢复码，无法自助找回' }, 401);
+  const h = await sha256Hex(row.recovery_salt + ':' + normCode(code));
+  if (h !== row.recovery_hash) return json({ error: '恢复码不对' }, 401);
+  const salt = randHex(16);
+  const passHash = await hashPassword(newPassword, salt);
+  await env.DB.prepare('UPDATE users SET pass_hash = ?, salt = ? WHERE id = ?').bind(passHash, salt, row.id).run();
+  await env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(row.id).run();  // 踢掉所有旧登录
+  const recoveryCode = await setRecovery(env, row.id);  // 旧码作废，换新码
+  const token = await newSession(env, row.id);
+  return json({ token, username: username.trim(), recoveryCode });
 }
 
 async function login(request, env) {
@@ -120,6 +165,8 @@ export async function onRequest(context) {
     if (m === 'POST' && path === 'register') return await register(request, env);
     if (m === 'POST' && path === 'login') return await login(request, env);
     if (m === 'POST' && path === 'logout') return await logout(request, env);
+    if (m === 'POST' && path === 'recovery/new') return await recoveryNew(request, env);
+    if (m === 'POST' && path === 'recovery/reset') return await recoveryReset(request, env);
     if (m === 'GET' && path === 'data') return await getData(request, env);
     if (m === 'PUT' && path === 'data') return await putData(request, env);
     return json({ error: '接口不存在' }, 404);

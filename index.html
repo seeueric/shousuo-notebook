@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- 手搓笔记本 · 账号云同步 + 恢复码版 -->
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -234,6 +235,9 @@
   .sync-kv{font-size:13.5px;display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
   .sync-kv b{font-weight:600}
   .acct-err{color:var(--red);font-size:12.5px;min-height:1.2em;margin-bottom:10px}
+  .linklike{color:var(--muted);font-size:12.5px;text-decoration:underline;padding:6px;text-align:center}
+  .linklike:hover{color:var(--accent)}
+  .code-input{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-align:center;letter-spacing:1.5px;font-weight:700}
 
   /* ===== 弹窗 ===== */
   .overlay{
@@ -1199,9 +1203,10 @@ function acctModalHTML() {
     </div>
     <div class="sync-actions">
       <button class="btn primary" data-action="acct-sync-now">🔄 立即同步</button>
+      <button class="btn" data-action="acct-new-code">🔑 生成新恢复码</button>
       <button class="btn" data-action="acct-logout">退出登录</button>
     </div>
-    <p class="sync-note">改动约 1.5 秒后自动上传；其它设备用同一账号登录即可看到相同数据。</p>`;
+    <p class="sync-note">改动约 1.5 秒后自动上传；其它设备用同一账号登录即可看到相同数据。恢复码用于忘记密码时自助重设，请妥善保存。</p>`;
   return `
     <p class="sync-p">注册一个账号，登录后数据自动云端同步，iPhone / iPad / Mac 实时互通，免费。</p>
     <div class="field"><label>用户名</label><input id="acct-user" type="text" placeholder="2-32 个字符" autocomplete="username"></div>
@@ -1210,8 +1215,38 @@ function acctModalHTML() {
     <div class="sync-actions">
       <button class="btn primary" data-action="acct-login">登 录</button>
       <button class="btn" data-action="acct-register">注册新账号</button>
+      <button class="linklike" data-action="acct-forgot">忘记密码？用恢复码重设</button>
     </div>
-    <p class="sync-note">密码加密存储，服务器只保存加密结果。暂无找回密码功能，请记牢。</p>`;
+    <p class="sync-note">密码加密存储，服务器只保存加密结果。注册成功会发一个「恢复码」，忘记密码时凭它重设。</p>`;
+}
+
+function forgotModalHTML() {
+  return `
+    <p class="sync-p">输入注册时保存的恢复码，重设密码并直接登录：</p>
+    <div class="field"><label>用户名</label><input id="fg-user" type="text" autocomplete="username"></div>
+    <div class="field"><label>恢复码</label><input id="fg-code" type="text" class="code-input" placeholder="XXXX-XXXX-XXXX-XXXX"></div>
+    <div class="field"><label>新密码</label><input id="fg-pass" type="password" placeholder="至少 6 位" autocomplete="new-password"></div>
+    <p class="acct-err" id="fg-err"></p>
+    <div class="sync-actions">
+      <button class="btn primary" data-action="acct-reset">重设密码并登录</button>
+      <button class="linklike" data-action="acct-open">← 返回登录</button>
+    </div>
+    <p class="sync-note">重设成功后旧恢复码作废，会发一个新恢复码，届时请重新保存。</p>`;
+}
+
+function showRecoveryCode(code, intro) {
+  openModal({
+    title: '🔑 你的恢复码',
+    hideOk: true,
+    html: `
+      <p class="sync-p">${intro}</p>
+      <div class="field"><input class="code-input" id="rc-input" type="text" readonly value="${esc(code)}"></div>
+      <div class="sync-actions">
+        <button class="btn primary" data-action="acct-copy-code">📋 复制恢复码</button>
+        <button class="btn" data-action="modal-cancel">我已保存好了</button>
+      </div>
+      <p class="sync-note">⚠️ 恢复码是忘记密码后<b>唯一</b>的找回方式，只显示这一次，请截图或抄写保存。生成新码或用它重设过密码后，旧码即作废。</p>`,
+  });
 }
 
 async function doAuth(kind) {
@@ -1226,6 +1261,7 @@ async function doAuth(kind) {
     localStorage.setItem('shousuo-cloud-token', cloud.token);
     localStorage.setItem('shousuo-cloud-user', cloud.user);
     closeModal();
+    if (r.recoveryCode) showRecoveryCode(r.recoveryCode, `注册成功，账号「${esc(r.username)}」已登录。请先保存好你的恢复码：`);
     await cloudPull(true);
     renderCloudUI();
   } catch (e) {
@@ -1239,6 +1275,41 @@ Object.assign(actions, {
   'acct-open'() { openModal({ title: '👤 账号与云同步', html: acctModalHTML(), hideOk: true }); },
   'acct-login'() { doAuth('login'); },
   'acct-register'() { doAuth('register'); },
+  'acct-forgot'() { openModal({ title: '🔑 找回密码', html: forgotModalHTML(), hideOk: true }); },
+  async 'acct-reset'() {
+    const u = $('#fg-user').value.trim(), c = $('#fg-code').value.trim(), p = $('#fg-pass').value;
+    const err = $('#fg-err');
+    if (u.length < 2 || !c || p.length < 6) { err.textContent = '请填完整：用户名、恢复码、新密码（至少 6 位）'; return; }
+    err.textContent = '请稍候…';
+    try {
+      const r = await api('recovery/reset', { method: 'POST', body: { username: u, code: c, newPassword: p } });
+      cloud.token = r.token; cloud.user = r.username;
+      localStorage.setItem('shousuo-cloud-token', cloud.token);
+      localStorage.setItem('shousuo-cloud-user', cloud.user);
+      closeModal();
+      showRecoveryCode(r.recoveryCode, `密码已重设，账号「${esc(r.username)}」已登录。这是你的新恢复码：`);
+      await cloudPull(true);
+      renderCloudUI();
+    } catch (e) {
+      err.textContent = (e.payload && e.payload.error) || '网络错误，稍后再试';
+    }
+  },
+  async 'acct-new-code'() {
+    if (!confirm('生成新恢复码后，旧恢复码立即作废，确定？')) return;
+    try {
+      const r = await api('recovery/new', { method: 'POST' });
+      closeModal();
+      showRecoveryCode(r.recoveryCode, '这是你的新恢复码（旧码已作废）：');
+    } catch (e) { alert((e.payload && e.payload.error) || '网络错误，稍后再试'); }
+  },
+  async 'acct-copy-code'() {
+    const inp = $('#rc-input'); inp.select();
+    try { await navigator.clipboard.writeText(inp.value); alert('已复制 ✅'); }
+    catch (e) {
+      try { document.execCommand('copy'); alert('已复制 ✅'); }
+      catch (e2) { alert('复制失败，请长按或手动选中复制'); }
+    }
+  },
   async 'acct-sync-now'() { closeModal(); await cloudPull(); if (cloudStatus === 'on') await cloudPush(); },
   async 'acct-logout'() {
     if (!confirm('退出登录？本机数据保留，云端数据也还在，重新登录即可继续同步。')) return;
