@@ -233,6 +233,7 @@
   .sync-note{font-size:12.5px;color:var(--muted);background:var(--panel-2);border-radius:8px;padding:9px 12px}
   .sync-kv{font-size:13.5px;display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
   .sync-kv b{font-weight:600}
+  .acct-err{color:var(--red);font-size:12.5px;min-height:1.2em;margin-bottom:10px}
 
   /* ===== 弹窗 ===== */
   .overlay{
@@ -283,6 +284,7 @@
     <button class="nav-btn" data-action="nav" data-view="goals"><span class="ico">🎯</span><span class="label">目标追踪</span></button>
     <button class="nav-btn" data-action="nav" data-view="board"><span class="ico">📌</span><span class="label">笔记板</span></button>
     <div class="sidebar-foot">
+      <button class="foot-btn" data-action="acct-open"><span class="ico">👤</span><span class="label" id="acct-label">登录 / 注册</span></button>
       <button class="foot-btn" data-action="sync-open"><span class="ico">☁️</span><span class="label" id="sync-label">iCloud 同步</span></button>
       <button class="foot-btn" data-action="toggle-theme"><span class="ico" id="theme-ico">🌙</span><span class="label">深浅模式</span></button>
       <button class="foot-btn" data-action="export"><span class="ico">📤</span><span class="label">导出数据</span></button>
@@ -420,7 +422,7 @@ data.plans = data.plans || {}; data.goals = data.goals || [];
 data.updatedAt = data.updatedAt || 0;
 
 const persistLocal = () => { try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch (e) {} };
-const save = () => { data.updatedAt = Date.now(); persistLocal(); scheduleFileWrite(); };
+const save = () => { data.updatedAt = Date.now(); persistLocal(); scheduleFileWrite(); scheduleCloudPush(); };
 
 /* ================= 日期工具 ================= */
 const pad = n => String(n).padStart(2, '0');
@@ -861,6 +863,7 @@ document.addEventListener('keydown', e => {
     if (t.dataset.enter === 'add-task') addTask();
     else if (t.dataset.enter === 'add-habit') addHabit();
     else if (t.dataset.enter === 'add-ms') addMilestone(t.dataset.goal, t);
+    else if (t.dataset.enter === 'acct-login') actions['acct-login']();
   }
 });
 $('#day-picker').addEventListener('change', e => {
@@ -1103,6 +1106,156 @@ document.addEventListener('visibilitychange', () => {
   else if (writeTimer) writeFile();
 });
 
+/* ================= 账号云同步（Cloudflare D1） ================= */
+/* 登录后整份数据自动上传/下载，多端按 updatedAt 新者胜。仅在线版可用。 */
+const cloudAvailable = /^https?:$/.test(location.protocol);
+let cloud = {
+  token: localStorage.getItem('shousuo-cloud-token') || '',
+  user: localStorage.getItem('shousuo-cloud-user') || '',
+};
+let cloudStatus = 'off';     // off | on | error
+let lastCloudAt = 0;
+let pushTimer = null;
+
+async function api(path, opts = {}) {
+  const r = await fetch('/api/' + path, {
+    method: opts.method || 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(cloud.token ? { Authorization: 'Bearer ' + cloud.token } : {}),
+    },
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(j.error || ('HTTP ' + r.status)), { status: r.status, payload: j });
+  return j;
+}
+
+function renderCloudUI() {
+  $('#acct-label').textContent = cloud.token
+    ? cloud.user + (cloudStatus === 'error' ? '（同步出错）' : '')
+    : '登录 / 注册';
+}
+function clearCloudSession() {
+  cloud = { token: '', user: '' };
+  localStorage.removeItem('shousuo-cloud-token');
+  localStorage.removeItem('shousuo-cloud-user');
+  cloudStatus = 'off'; lastCloudAt = 0;
+}
+function adoptRemote(remote) {
+  data = remote;
+  data.tasks = data.tasks || {}; data.habits = data.habits || [];
+  data.plans = data.plans || {}; data.goals = data.goals || [];
+  persistLocal(); applyTheme(); rerender();
+  scheduleFileWrite();          // 若绑定了 iCloud 文件，跟着更新
+}
+
+function scheduleCloudPush() {
+  if (!cloud.token || !cloudAvailable) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(cloudPush, 1500);
+}
+async function cloudPush() {
+  clearTimeout(pushTimer); pushTimer = null;
+  if (!cloud.token || !cloudAvailable) return;
+  try {
+    const r = await api('data', { method: 'PUT', body: { data, updatedAt: data.updatedAt } });
+    if (r.conflict) adoptRemote(r.data);      // 云端更新：采纳云端
+    lastCloudAt = Date.now(); cloudStatus = 'on';
+  } catch (e) {
+    if (e.status === 401) clearCloudSession(); else cloudStatus = 'error';
+  }
+  renderCloudUI();
+}
+async function cloudPull(interactive) {
+  if (!cloud.token || !cloudAvailable) return;
+  try {
+    const r = await api('data');
+    if (r.data === null) scheduleCloudPush();                       // 云端还空着：上传本机
+    else if ((r.updatedAt || 0) > (data.updatedAt || 0)) adoptRemote(r.data);
+    else if ((data.updatedAt || 0) > (r.updatedAt || 0)) {
+      if (interactive && r.updatedAt &&
+          confirm('云端账号里已有另一份数据：\n「确定」= 使用云端数据（覆盖本机）\n「取消」= 用本机数据覆盖云端')) {
+        adoptRemote(r.data);
+      } else scheduleCloudPush();
+    }
+    lastCloudAt = Date.now(); cloudStatus = 'on';
+  } catch (e) {
+    if (e.status === 401) clearCloudSession(); else cloudStatus = 'error';
+  }
+  renderCloudUI();
+}
+
+function acctModalHTML() {
+  if (!cloudAvailable) return `
+    <p class="sync-p">账号云同步需要在在线版里使用：</p>
+    <p class="sync-p"><b>https://shousuo-notebook.pages.dev</b></p>
+    <p class="sync-note">本地版可以继续用「☁️ iCloud 同步」或 导出 / 导入。</p>`;
+  if (cloud.token) return `
+    <div class="sync-kv">
+      <span>当前账号：<b>${esc(cloud.user)}</b></span>
+      <span>同步状态：<b>${cloudStatus === 'error' ? '⚠️ 出错（可能断网了）' : '✅ 自动同步中'}</b></span>
+      ${lastCloudAt ? `<span>最后同步：<b>${new Date(lastCloudAt).toLocaleString('zh-CN')}</b></span>` : ''}
+    </div>
+    <div class="sync-actions">
+      <button class="btn primary" data-action="acct-sync-now">🔄 立即同步</button>
+      <button class="btn" data-action="acct-logout">退出登录</button>
+    </div>
+    <p class="sync-note">改动约 1.5 秒后自动上传；其它设备用同一账号登录即可看到相同数据。</p>`;
+  return `
+    <p class="sync-p">注册一个账号，登录后数据自动云端同步，iPhone / iPad / Mac 实时互通，免费。</p>
+    <div class="field"><label>用户名</label><input id="acct-user" type="text" placeholder="2-32 个字符" autocomplete="username"></div>
+    <div class="field"><label>密码</label><input id="acct-pass" type="password" placeholder="至少 6 位" autocomplete="current-password" data-enter="acct-login"></div>
+    <p class="acct-err" id="acct-err"></p>
+    <div class="sync-actions">
+      <button class="btn primary" data-action="acct-login">登 录</button>
+      <button class="btn" data-action="acct-register">注册新账号</button>
+    </div>
+    <p class="sync-note">密码加密存储，服务器只保存加密结果。暂无找回密码功能，请记牢。</p>`;
+}
+
+async function doAuth(kind) {
+  const u = $('#acct-user').value.trim();
+  const p = $('#acct-pass').value;
+  const err = $('#acct-err');
+  if (u.length < 2 || p.length < 6) { err.textContent = '用户名至少 2 个字符，密码至少 6 位'; return; }
+  err.textContent = '请稍候…';
+  try {
+    const r = await api(kind, { method: 'POST', body: { username: u, password: p } });
+    cloud.token = r.token; cloud.user = r.username;
+    localStorage.setItem('shousuo-cloud-token', cloud.token);
+    localStorage.setItem('shousuo-cloud-user', cloud.user);
+    closeModal();
+    await cloudPull(true);
+    renderCloudUI();
+  } catch (e) {
+    err.textContent = e.status === 404
+      ? '此网址不含云服务，请使用 shousuo-notebook.pages.dev'
+      : (e.payload && e.payload.error) || '网络错误，稍后再试';
+  }
+}
+
+Object.assign(actions, {
+  'acct-open'() { openModal({ title: '👤 账号与云同步', html: acctModalHTML(), hideOk: true }); },
+  'acct-login'() { doAuth('login'); },
+  'acct-register'() { doAuth('register'); },
+  async 'acct-sync-now'() { closeModal(); await cloudPull(); if (cloudStatus === 'on') await cloudPush(); },
+  async 'acct-logout'() {
+    if (!confirm('退出登录？本机数据保留，云端数据也还在，重新登录即可继续同步。')) return;
+    try { await api('logout', { method: 'POST' }); } catch (e) {}
+    clearCloudSession(); closeModal(); renderCloudUI();
+  },
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (!cloud.token || !cloudAvailable) return;
+  if (document.visibilityState === 'visible') cloudPull();
+  else if (pushTimer) cloudPush();
+});
+setInterval(() => {
+  if (cloud.token && cloudAvailable && document.visibilityState === 'visible' && !pushTimer) cloudPull();
+}, 120000);
+
 /* ================= 主题 & 启动 ================= */
 function effectiveTheme() {
   if (data.theme === 'dark' || data.theme === 'light') return data.theme;
@@ -1119,6 +1272,8 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme
 applyTheme();
 rerender();
 restoreSync();
+renderCloudUI();
+if (cloudAvailable && cloud.token) cloudPull();
 </script>
 </body>
 </html>

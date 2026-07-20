@@ -1,0 +1,8 @@
+name = "shousuo-notebook"
+compatibility_date = "2026-07-01"
+pages_build_output_dir = "public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "shousuo-notebook-db"
+database_id = "0dde9b99-d9a7-49e4-a90b-8fb0b4b54529"
