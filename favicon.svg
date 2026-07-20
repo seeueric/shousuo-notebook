@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#54A9FF"/>
+      <stop offset="1" stop-color="#0A6AEF"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFB43D"/>
+      <stop offset="1" stop-color="#FF8A00"/>
+    </linearGradient>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#003a86" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="114" fill="url(#bg)"/>
+  <g filter="url(#sh)">
+    <!-- 橙色书签（在书后，仅顶部露出） -->
+    <path d="M256 150 h34 v96 l-17 -15 -17 15 Z" fill="url(#mark)"/>
+    <!-- 白色打开的书：左右两页 -->
+    <path d="M250 205
+             C220 184, 172 180, 128 190
+             L128 330
+             C172 320, 220 324, 250 344 Z" fill="#ffffff"/>
+    <path d="M262 205
+             C292 184, 340 180, 384 190
+             L384 330
+             C340 320, 292 324, 262 344 Z" fill="#ffffff"/>
+    <!-- 左页文字线 -->
+    <g fill="#8fbdf0">
+      <rect x="150" y="224" width="78" height="11" rx="5.5"/>
+      <rect x="150" y="252" width="78" height="11" rx="5.5"/>
+      <rect x="150" y="280" width="54" height="11" rx="5.5"/>
+    </g>
+    <!-- 右页勾选（待办语义） -->
+    <path d="M300 258 l20 20 l44 -46" fill="none" stroke="#2f8fef" stroke-width="15"
+          stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
