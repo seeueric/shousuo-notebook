@@ -218,6 +218,27 @@
   }
   .add-col:hover{filter:brightness(.98)}
 
+  /* ===== 会议纪要 ===== */
+  .min-list{display:flex;flex-direction:column;gap:12px;max-width:720px}
+  .min-card{display:block;width:100%;text-align:left;background:var(--panel);border-radius:14px;box-shadow:var(--shadow);padding:15px 17px}
+  .min-card:active{background:var(--panel-2)}
+  .min-card-top{display:flex;align-items:baseline;gap:10px;margin-bottom:5px}
+  .min-title{font-size:16px;font-weight:600;flex:1;word-break:break-word;letter-spacing:-.2px}
+  .min-title.untitled{color:var(--muted);font-weight:500}
+  .min-date{font-size:12px;color:var(--muted);white-space:nowrap;flex-shrink:0;font-variant-numeric:tabular-nums}
+  .min-meta{font-size:12.5px;color:var(--muted);margin-bottom:5px}
+  .min-snippet{font-size:13px;color:var(--muted);line-height:1.5;white-space:pre-wrap;word-break:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .min-editbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .min-back{display:inline-flex;align-items:center;color:var(--accent);font-weight:600;font-size:15.5px}
+  .min-del-btn{color:var(--red);font-size:14px;font-weight:500;padding:4px 6px;border-radius:8px}
+  .min-del-btn:active{background:var(--panel-2)}
+  .min-title-input{width:100%;border:none;background:transparent;outline:none;font-size:24px;font-weight:700;letter-spacing:-.4px;padding:2px 0;margin-bottom:6px;color:var(--ink)}
+  .min-metafields{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+  .min-metafields input{border:none;background:var(--panel-2);border-radius:9px;padding:8px 12px;outline:none;font-size:13px;color:var(--ink)}
+  .min-metafields .min-attendees{flex:1;min-width:150px}
+  .min-body-input{width:100%;border:none;background:transparent;outline:none;resize:none;font-size:15.5px;line-height:1.72;color:var(--ink);min-height:50vh;overflow:hidden;display:block}
+  .min-savehint{font-size:12px;color:var(--muted);margin-top:12px;padding-bottom:20px}
+
   /* ===== 账号 / 弹窗提示 ===== */
   .sync-p{font-size:13.5px;margin-bottom:12px}
   .sync-actions{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
@@ -281,8 +302,8 @@
 
   /* ===== 底部标签栏（移动端） ===== */
   .tabbar{display:none}
-  .tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0 5px;color:var(--muted);font-size:10.5px;font-weight:500}
-  .tab-btn .ico svg{width:25px;height:25px;stroke-width:1.7}
+  .tab-btn{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0 5px;color:var(--muted);font-size:10px;font-weight:500}
+  .tab-btn .ico svg{width:23px;height:23px;stroke-width:1.7}
   .tab-btn.active{color:var(--accent)}
   .tab-btn.active .ico svg{stroke-width:2.1}
 
@@ -352,6 +373,7 @@
     <button class="nav-btn" data-action="nav" data-view="week"><span class="ico"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3.5"/><path d="M3.5 10h17M8 2.5v4M16 2.5v4"/></svg></span><span class="label">计划</span></button>
     <button class="nav-btn" data-action="nav" data-view="goals"><span class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg></span><span class="label">目标追踪</span></button>
     <button class="nav-btn" data-action="nav" data-view="board"><span class="ico"><svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="7.2" height="16" rx="2.2"/><rect x="13.3" y="4" width="7.2" height="10" rx="2.2"/></svg></span><span class="label">笔记板</span></button>
+    <button class="nav-btn" data-action="nav" data-view="minutes"><span class="ico"><svg viewBox="0 0 24 24"><path d="M6.5 2.5h7l4.5 4.5v13a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 5 20V4a1.5 1.5 0 0 1 1.5-1.5z"/><path d="M13 2.5V8h5"/><path d="M8.5 12.5h7M8.5 16h5"/></svg></span><span class="label">会议纪要</span></button>
     <div class="sidebar-foot">
       <button class="foot-btn" data-action="acct-open"><span class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5c1.7-3.4 4.4-5 7.5-5s5.8 1.6 7.5 5"/></svg></span><span class="label" id="acct-label">登录 / 注册</span></button>
       <button class="foot-btn" data-action="toggle-theme"><span class="ico" id="theme-ico"></span><span class="label">深浅模式</span></button>
@@ -444,6 +466,9 @@
       <div class="board-scroll"><div class="board" id="board"></div></div>
     </section>
 
+    <!-- ============ 会议纪要 ============ -->
+    <section class="view" id="view-minutes"><div id="minutes-body"></div></section>
+
     <!-- ============ 设置 ============ -->
     <section class="view" id="view-settings">
       <div class="view-head"><div>
@@ -483,6 +508,7 @@
     <button class="tab-btn" data-action="nav" data-view="week"><span class="ico"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3.5"/><path d="M3.5 10h17M8 2.5v4M16 2.5v4"/></svg></span>计划</button>
     <button class="tab-btn" data-action="nav" data-view="goals"><span class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg></span>目标</button>
     <button class="tab-btn" data-action="nav" data-view="board"><span class="ico"><svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="7.2" height="16" rx="2.2"/><rect x="13.3" y="4" width="7.2" height="10" rx="2.2"/></svg></span>笔记</button>
+    <button class="tab-btn" data-action="nav" data-view="minutes"><span class="ico"><svg viewBox="0 0 24 24"><path d="M6.5 2.5h7l4.5 4.5v13a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 5 20V4a1.5 1.5 0 0 1 1.5-1.5z"/><path d="M13 2.5V8h5"/><path d="M8.5 12.5h7M8.5 16h5"/></svg></span>纪要</button>
     <button class="tab-btn" data-action="nav" data-view="settings"><span class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H10a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V10a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span>设置</button>
   </nav>
 </div>
@@ -519,6 +545,7 @@ function defaultData() {
       { id: uid(), name: '📋 任务', cards: [] },
       { id: uid(), name: '📝 备注', cards: [] },
     ]},
+    minutes: [],            // [{id,title,date,attendees,body,updatedAt}]
     theme: 'auto',
   };
 }
@@ -528,7 +555,7 @@ try {
   if (!data.board || !Array.isArray(data.board.columns)) data = defaultData();
 } catch (e) { data = defaultData(); }
 data.tasks = data.tasks || {}; data.habits = data.habits || [];
-data.plans = data.plans || {}; data.goals = data.goals || [];
+data.plans = data.plans || {}; data.goals = data.goals || []; data.minutes = data.minutes || [];
 data.updatedAt = data.updatedAt || 0;
 
 const persistLocal = () => { try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch (e) {} };
@@ -545,7 +572,7 @@ const cnDate = s => { const d = parse(s); return `${d.getFullYear()}年${d.getMo
 const mondayOf = s => { const d = parse(s); const off = (d.getDay() + 6) % 7; d.setDate(d.getDate() - off); return fmt(d); };
 
 /* ================= 状态 ================= */
-const state = { view: 'daily', date: todayStr(), planDate: todayStr(), planMode: 'week' };
+const state = { view: 'daily', date: todayStr(), planDate: todayStr(), planMode: 'week', minutesView: 'list', editingMinuteId: null };
 const $ = sel => document.querySelector(sel);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -751,6 +778,73 @@ function renderBoard() {
     `<button class="add-col" data-action="add-col">＋ 新增分栏</button>`;
 }
 
+/* ================= 渲染：会议纪要 ================= */
+function minSnippet(t) { return (t || '').replace(/\s+/g, ' ').trim(); }
+function minEditorHTML(m) {
+  return `
+    <div class="min-editbar">
+      <button class="min-back" data-action="minute-back">‹ 会议纪要</button>
+      <button class="min-del-btn" data-action="minute-del" data-id="${m.id}">删除</button>
+    </div>
+    <input class="min-title-input" data-mfield="title" placeholder="会议标题" value="${esc(m.title)}">
+    <div class="min-metafields">
+      <input type="date" data-mfield="date" value="${esc(m.date || '')}">
+      <input class="min-attendees" data-mfield="attendees" placeholder="参会人（可选）" value="${esc(m.attendees || '')}">
+    </div>
+    <textarea class="min-body-input" data-mfield="body" placeholder="在此记录会议内容……&#10;&#10;· 议题&#10;· 讨论要点&#10;· 结论与待办">${esc(m.body || '')}</textarea>
+    <div class="min-savehint" id="min-savehint">已自动保存</div>`;
+}
+function autoGrowBody() {
+  const t = document.querySelector('.min-body-input');
+  if (!t) return;
+  t.style.height = 'auto';
+  t.style.height = Math.max(t.scrollHeight, Math.round(window.innerHeight * 0.5)) + 'px';
+}
+function renderMinutes() {
+  const host = $('#minutes-body');
+  if (!host) return;
+  if (state.minutesView === 'edit') {
+    const m = data.minutes.find(x => x.id === state.editingMinuteId);
+    if (m) { host.innerHTML = minEditorHTML(m); autoGrowBody(); return; }
+    state.minutesView = 'list';
+  }
+  const list = data.minutes.slice().sort((a, b) =>
+    (b.date || '').localeCompare(a.date || '') || (b.updatedAt || 0) - (a.updatedAt || 0));
+  host.innerHTML = `
+    <div class="view-head">
+      <div>
+        <div class="view-title">会议纪要</div>
+        <div class="view-sub">${data.minutes.length ? data.minutes.length + ' 篇记录 · 自动保存' : '长篇会议记录 · 自动保存 · 云端同步'}</div>
+      </div>
+      <button class="btn primary" data-action="minute-new">＋ 新建</button>
+    </div>
+    ${list.length ? `<div class="min-list">${list.map(m => {
+      const body = minSnippet(m.body);
+      return `<button class="min-card" data-action="minute-open" data-id="${m.id}">
+        <div class="min-card-top">
+          <span class="min-title ${m.title.trim() ? '' : 'untitled'}">${m.title.trim() ? esc(m.title) : '无标题纪要'}</span>
+          <span class="min-date">${esc(m.date || '')}</span>
+        </div>
+        ${(m.attendees || '').trim() ? `<div class="min-meta">👥 ${esc(m.attendees)}</div>` : ''}
+        <div class="min-snippet">${body ? esc(body) : '（空白）'}</div>
+      </button>`;
+    }).join('')}</div>`
+    : '<div class="empty" style="padding:64px 0">还没有会议纪要，点右上角「＋ 新建」记录第一篇 📝</div>'}`;
+}
+let minSaveTimer = null;
+document.addEventListener('input', e => {
+  const f = e.target.dataset && e.target.dataset.mfield;
+  if (!f) return;
+  const m = data.minutes.find(x => x.id === state.editingMinuteId);
+  if (!m) return;
+  m[f] = e.target.value; m.updatedAt = Date.now();
+  if (f === 'body') autoGrowBody();
+  const hint = $('#min-savehint'); if (hint) hint.textContent = '保存中…';
+  clearTimeout(minSaveTimer);
+  minSaveTimer = setTimeout(() => { save(); const h = $('#min-savehint'); if (h) h.textContent = '已自动保存 ✓'; }, 500);
+});
+
+
 /* ================= 弹窗 ================= */
 let modalSubmit = null;
 function openModal({ title, fields = [], html = '', onSubmit, danger, hideOk }) {
@@ -824,7 +918,7 @@ document.addEventListener('keydown', e => {
 });
 
 /* ================= 动作 ================= */
-const rerender = () => { renderNav(); renderDaily(); renderPlan(); renderGoals(); renderBoard(); };
+const rerender = () => { renderNav(); renderDaily(); renderPlan(); renderGoals(); renderBoard(); renderMinutes(); };
 
 function addTask() {
   const inp = $('#task-input'); const text = inp.value.trim();
@@ -1037,6 +1131,30 @@ const actions = {
     col.cards = col.cards.filter(c => c.id !== el.dataset.id);
     save(); renderBoard();
   },
+  'minute-new'() {
+    const m = { id: uid(), title: '', date: todayStr(), attendees: '', body: '', updatedAt: Date.now() };
+    data.minutes.unshift(m);
+    save();
+    state.editingMinuteId = m.id; state.minutesView = 'edit';
+    renderMinutes();
+    const t = $('#minutes-body').querySelector('.min-title-input');
+    if (t) setTimeout(() => t.focus(), 40);
+  },
+  'minute-open'(el) { state.editingMinuteId = el.dataset.id; state.minutesView = 'edit'; renderMinutes(); },
+  'minute-back'() {
+    const m = data.minutes.find(x => x.id === state.editingMinuteId);
+    if (m && !m.title.trim() && !(m.body || '').trim() && !(m.attendees || '').trim()) {
+      data.minutes = data.minutes.filter(x => x.id !== m.id); save();
+    }
+    state.minutesView = 'list'; state.editingMinuteId = null; renderMinutes();
+  },
+  'minute-del'(el) {
+    const m = data.minutes.find(x => x.id === el.dataset.id);
+    if (m && confirm(`删除会议纪要「${m.title.trim() || '无标题'}」？`)) {
+      data.minutes = data.minutes.filter(x => x.id !== el.dataset.id); save();
+      state.minutesView = 'list'; state.editingMinuteId = null; renderMinutes();
+    }
+  },
   'modal-cancel'() { closeModal(); },
 };
 
@@ -1068,7 +1186,7 @@ $('#import-file').addEventListener('change', e => {
       if (!confirm('导入会覆盖当前所有数据，确定？')) return;
       data = d;
       data.tasks = data.tasks || {}; data.habits = data.habits || [];
-      data.plans = data.plans || {}; data.goals = data.goals || [];
+      data.plans = data.plans || {}; data.goals = data.goals || []; data.minutes = data.minutes || []; data.minutes = data.minutes || [];
       save(); applyTheme(); rerender();
       alert('导入成功 ✅');
     } catch (err) { alert('导入失败：不是有效的备份文件'); }
@@ -1153,7 +1271,7 @@ function clearCloudSession() {
 function adoptRemote(remote) {
   data = remote;
   data.tasks = data.tasks || {}; data.habits = data.habits || [];
-  data.plans = data.plans || {}; data.goals = data.goals || [];
+  data.plans = data.plans || {}; data.goals = data.goals || []; data.minutes = data.minutes || [];
   persistLocal(); applyTheme(); rerender();
 }
 
