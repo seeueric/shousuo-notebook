@@ -157,6 +157,88 @@ async function putData(request, env) {
   return json({ ok: true, updatedAt: incoming });
 }
 
+/* ================= AI（Cloudflare Workers AI · Qwen3-30B） ================= */
+const AI_MODEL = '@cf/qwen/qwen3-30b-a3b-fp8';
+
+function extractJSON(s) {
+  if (!s) return null;
+  let t = String(s).trim();
+  t = t.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+  // 去掉可能的 <think>…</think>
+  t = t.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+  try { return JSON.parse(t); } catch (e) {}
+  const first = Math.min(...['[', '{'].map(c => { const i = t.indexOf(c); return i < 0 ? Infinity : i; }));
+  const lastArr = t.lastIndexOf(']'), lastObj = t.lastIndexOf('}');
+  const last = Math.max(lastArr, lastObj);
+  if (first === Infinity || last <= first) return null;
+  try { return JSON.parse(t.slice(first, last + 1)); } catch (e) { return null; }
+}
+
+const AI_RULES = `/no_think
+你是资深业务笔记助手。用户是精工工业建筑系统集团（IBS，钢结构/工业建筑系统/精致屋面）代表处负责人兼客户经理，常用系统：红圈CRM、钉钉。
+硬性要求：一律简体中文，务实业务口吻，不要空话套话；相对时间（本周/下周等）以“今天”为基准换算成具体日期；不确定的人名/金额/时间标【待确认】，不得编造；人名尽量对应到下方词典的规范称谓。`;
+
+function classifySys(today, dict) {
+  return `${AI_RULES}
+今天是 ${today}。
+${dict ? '【用户业务词典】\n' + dict + '\n' : ''}
+任务：我会给你一段随手记的碎片，可能含多件事。拆成相互独立的条目，逐条结构化。
+只输出一个 JSON 数组（哪怕一条也用数组），禁止任何解释、禁止思考过程、禁止 markdown 代码块。
+每个元素字段：
+{"标题":"动词开头,≤12字","类型":"待办|领导交办|客户线索|市场信息|会议要点|素材/想法","归属":"所属战役/项目/客户/内部管理,无法判断填 未归类","相关人":["规范称谓,无法对应填 待确认"],"紧急度":"高|中|低","时限":"YYYY-MM-DD或 本周/本月,无则 null","落地动作":["需进红圈CRM|需进运营周会跟踪表|需上报办公厅|仅存档"],"原文":"对应片段"}
+规则：出现董事长/主任/领导要求/让我/交办→类型优先 领导交办 且落地动作含 需上报办公厅；出现客户名/项目/招标/投标/报价/合同→落地动作含 需进红圈CRM；纯想法/资讯/素材→落地动作填 仅存档，不硬造行动项；一件事可多个落地动作。`;
+}
+
+function minutesSys(today, dict) {
+  return `${AI_RULES}
+今天是 ${today}。
+${dict ? '【用户业务词典】\n' + dict + '\n' : ''}
+任务：把我提供的会议记录/录音转写整理成会议纪要。
+只输出一个 JSON 对象，禁止任何解释、禁止思考过程、禁止 markdown 代码块。字段：
+{"title":"会议名,≤16字,不含日期","date":"YYYY-MM-DD(依据今天推断,无法确定用今天)","attendees":"参会人,顿号分隔的字符串,规范称谓","body":"正文纯文本"}
+body 用纯文本排版（不要 markdown 表格、不要井号标题），按以下结构，没有内容的段落写“无”：
+零、一句话结论
+一、会议要素
+　地点/线上：　主持：　议题：
+二、议定事项
+　1) 事项 / 责任人 / 时限 / 交付物
+三、待决问题
+　- 事项（卡在谁那里、需要什么才能决策）
+四、承诺对照
+　我方：- …
+　对方：- …
+五、需跟踪·录入去向
+　- 事项 / 责任人 / 时限 / 去向(红圈CRM 或 运营周会跟踪表)
+要求：责任人用规范称谓；时限尽量转绝对日期；领导口头交办即使没形成决议也列入议定事项并标【口头交办】；金额/工期/承诺条款保留原话不转述。`;
+}
+
+async function aiRun(request, env) {
+  const user = await auth(request, env);
+  if (!user) return json({ error: '请先登录再使用 AI' }, 401);
+  if (!env.AI) return json({ error: '本站未启用 AI 能力' }, 501);
+  const { kind, text, today, dict } = await readBody(request);
+  if (typeof text !== 'string' || !text.trim()) return json({ error: '内容为空' }, 400);
+  if (text.length > 16000) return json({ error: '内容过长（上限约 1.6 万字）' }, 413);
+  const t = (typeof today === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(today)) ? today : new Date().toISOString().slice(0, 10);
+  const d = (typeof dict === 'string' ? dict : '').slice(0, 4000);
+  let sys;
+  if (kind === 'minutes') sys = minutesSys(t, d);
+  else if (kind === 'classify') sys = classifySys(t, d);
+  else return json({ error: '未知的 AI 任务' }, 400);
+  let resp;
+  try {
+    const out = await env.AI.run(AI_MODEL, {
+      messages: [{ role: 'system', content: sys }, { role: 'user', content: text }],
+      max_tokens: 3000,
+    });
+    resp = out ? out.response : undefined;
+  } catch (e) { return json({ error: 'AI 调用失败，请稍后再试' }, 502); }
+  // Workers AI 可能直接返回已解析的对象/数组，也可能返回字符串
+  const parsed = (resp && typeof resp === 'object') ? resp : extractJSON(resp);
+  if (parsed == null) return json({ error: 'AI 返回内容无法解析，请重试或精简输入' }, 502);
+  return json({ kind, result: parsed });
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   const path = new URL(request.url).pathname.replace(/^\/api\/?/, '');
@@ -169,6 +251,7 @@ export async function onRequest(context) {
     if (m === 'POST' && path === 'recovery/reset') return await recoveryReset(request, env);
     if (m === 'GET' && path === 'data') return await getData(request, env);
     if (m === 'PUT' && path === 'data') return await putData(request, env);
+    if (m === 'POST' && path === 'ai') return await aiRun(request, env);
     return json({ error: '接口不存在' }, 404);
   } catch (e) {
     if (e.status === 413) return json({ error: '数据太大了' }, 413);

@@ -391,6 +391,7 @@
           <div class="view-sub" id="daily-sub"></div>
         </div>
         <div class="day-nav">
+          <button class="btn small" data-action="ai-capture-open">✨ 速记</button>
           <button class="btn small" data-action="day-prev">‹ 前一天</button>
           <button class="btn small primary" data-action="day-today">今天</button>
           <button class="btn small" data-action="day-next">后一天 ›</button>
@@ -488,6 +489,13 @@
         </button>
       </div>
       <div class="settings-group">
+        <button class="set-row" data-action="ai-dict-open">
+          <span class="set-ico" style="background:#8e5cff"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg></span>
+          <span class="set-main"><span class="set-title">AI 业务词典</span><span class="set-sub">让 AI 认识你的人、战役、客户</span></span>
+          <span class="set-arrow"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>
+        </button>
+      </div>
+      <div class="settings-group">
         <button class="set-row" data-action="export">
           <span class="set-ico green"><svg viewBox="0 0 24 24"><path d="M12 14.5V3.5M8.5 7L12 3.5 15.5 7"/><path d="M7 11H6a3 3 0 0 0-3 3v4a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3v-4a3 3 0 0 0-3-3h-1"/></svg></span>
           <span class="set-main"><span class="set-title">导出数据</span><span class="set-sub">备份为 JSON 文件</span></span>
@@ -534,6 +542,17 @@
 const LS_KEY = 'shousuo-notebook-v1';
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
+const DEFAULT_AI_DICT = `【人物词典】（把真实姓名/称谓填上，AI 只认这里写的）
+- 董事长：___（口语：___，如 寿总=___）
+- 办公厅主任：___
+- 直属/分管领导：___
+- 重点客户对接人：客户A—___；客户B—___
+
+【在跑事项】
+六大战役、789大客户拓展战役、代表处目标市场细分(11大类工业建筑)、市场信息定向搜索监控、海外拓展(合规指南/CBAM欧盟碳关税/商业航天)、提质增效专题、商业秘密梳理、运营周会事项跟踪表
+
+【组织】事业部 / 代表处 / 业务市场部 / 办公厅 / 董事长办公会 / 运营周会 / 各子公司`;
+
 function defaultData() {
   return {
     tasks: {},            // { 'YYYY-MM-DD': [{id,text,done}] }
@@ -546,6 +565,7 @@ function defaultData() {
       { id: uid(), name: '📝 备注', cards: [] },
     ]},
     minutes: [],            // [{id,title,date,attendees,body,updatedAt}]
+    aiDict: DEFAULT_AI_DICT,
     theme: 'auto',
   };
 }
@@ -556,6 +576,7 @@ try {
 } catch (e) { data = defaultData(); }
 data.tasks = data.tasks || {}; data.habits = data.habits || [];
 data.plans = data.plans || {}; data.goals = data.goals || []; data.minutes = data.minutes || [];
+data.aiDict = (typeof data.aiDict === 'string') ? data.aiDict : DEFAULT_AI_DICT;
 data.updatedAt = data.updatedAt || 0;
 
 const persistLocal = () => { try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch (e) {} };
@@ -816,7 +837,10 @@ function renderMinutes() {
         <div class="view-title">会议纪要</div>
         <div class="view-sub">${data.minutes.length ? data.minutes.length + ' 篇记录 · 自动保存' : '长篇会议记录 · 自动保存 · 云端同步'}</div>
       </div>
-      <button class="btn primary" data-action="minute-new">＋ 新建</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn" data-action="ai-minutes-open">✨ AI 整理</button>
+        <button class="btn primary" data-action="minute-new">＋ 新建</button>
+      </div>
     </div>
     ${list.length ? `<div class="min-list">${list.map(m => {
       const body = minSnippet(m.body);
@@ -1155,6 +1179,92 @@ const actions = {
       state.minutesView = 'list'; state.editingMinuteId = null; renderMinutes();
     }
   },
+  'ai-dict-open'() {
+    openModal({
+      title: 'AI 业务词典',
+      fields: [{ key: 'dict', label: '随每次 AI 整理 / 速记发给 AI，帮它认识你的人、战役、客户（填得越准，归类越准）', type: 'textarea', value: data.aiDict || '' }],
+      onSubmit(v) { data.aiDict = v.dict; save(); },
+    });
+  },
+  'ai-capture-open'() {
+    if (!cloud.token) { alert('AI 速记需要先登录账号（设置 → 登录 / 注册）。'); return; }
+    openModal({
+      title: 'AI 速记归类', hideOk: true,
+      html: `
+        <p class="sync-p">贴一段随手记，AI 归类并把其中的待办 / 领导交办加进当前这天的待办。</p>
+        <div class="field"><textarea id="ai-cap-input" style="min-height:120px" placeholder="例：寿总让我周五前把CBAM方案报办公厅；中建三局那个厂房项目要建个商机…"></textarea></div>
+        <p class="acct-err" id="ai-cap-err"></p>
+        <div class="sync-actions"><button class="btn primary" data-action="ai-capture-run">✨ 归类</button></div>
+        <p class="sync-note">AI 结果可能有误，加入后可自行增删。</p>`,
+    });
+  },
+  async 'ai-capture-run'() {
+    const text = ($('#ai-cap-input').value || '').trim(), err = $('#ai-cap-err');
+    if (text.length < 4) { err.textContent = '内容太短'; return; }
+    const btn = document.querySelector('[data-action="ai-capture-run"]');
+    btn.textContent = '归类中…（约 10-30 秒）'; btn.disabled = true; err.textContent = '';
+    try {
+      const r = await aiCall('classify', text);
+      const items = Array.isArray(r.result) ? r.result : [];
+      let added = 0; const others = [];
+      items.forEach(it => {
+        const type = it['类型'] || '', title = (it['标题'] || '').trim();
+        if (!title) return;
+        if (type === '待办' || type === '领导交办') {
+          const pre = type === '领导交办' ? '【领导】' : '';
+          const lim = it['时限'] && it['时限'] !== 'null' ? `（${it['时限']}）` : '';
+          (data.tasks[state.date] = data.tasks[state.date] || []).push({ id: uid(), text: pre + title + lim, done: false });
+          added++;
+        } else others.push(`${title}（${type}）`);
+      });
+      if (added) save();
+      closeModal();
+      if (added) { state.view = 'daily'; renderNav(); renderDaily(); }
+      let msg = added ? `已加入 ${added} 条待办 ✅` : '没有可直接执行的待办';
+      if (others.length) msg += `\n\n另有 ${others.length} 条已归类、未自动建：\n· ` + others.join('\n· ');
+      alert(msg);
+    } catch (e) {
+      err.textContent = (e.payload && e.payload.error) || 'AI 处理失败，稍后再试';
+      btn.textContent = '✨ 归类'; btn.disabled = false;
+    }
+  },
+  'ai-minutes-open'() {
+    if (!cloud.token) { alert('AI 整理需要先登录账号（设置 → 登录 / 注册）。'); return; }
+    openModal({
+      title: 'AI 整理会议纪要', hideOk: true,
+      html: `
+        <p class="sync-p">把会议记录 / 录音转写贴进来，AI 自动整理成纪要，并填好标题、日期、参会人。</p>
+        <div class="field"><textarea id="ai-min-input" style="min-height:170px" placeholder="粘贴会议原始记录 / 逐字稿…"></textarea></div>
+        <p class="acct-err" id="ai-min-err"></p>
+        <div class="sync-actions"><button class="btn primary" data-action="ai-minutes-run">✨ 开始整理</button></div>
+        <p class="sync-note">生成后请核对关键信息（金额 / 时限 / 承诺）。</p>`,
+    });
+  },
+  async 'ai-minutes-run'() {
+    const text = ($('#ai-min-input').value || '').trim(), err = $('#ai-min-err');
+    if (text.length < 10) { err.textContent = '内容太短，贴入完整一点的记录'; return; }
+    const btn = document.querySelector('[data-action="ai-minutes-run"]');
+    btn.textContent = '整理中…（约 15-30 秒）'; btn.disabled = true; err.textContent = '';
+    try {
+      const r = await aiCall('minutes', text);
+      const o = r.result || {};
+      const m = {
+        id: uid(),
+        title: String(o.title || '').slice(0, 40),
+        date: /^\d{4}-\d{2}-\d{2}$/.test(o.date) ? o.date : todayStr(),
+        attendees: String(o.attendees || ''),
+        body: String(o.body || ''),
+        updatedAt: Date.now(),
+      };
+      data.minutes.unshift(m); save();
+      closeModal();
+      state.view = 'minutes'; state.editingMinuteId = m.id; state.minutesView = 'edit';
+      renderNav(); renderMinutes();
+    } catch (e) {
+      err.textContent = (e.payload && e.payload.error) || 'AI 处理失败，稍后再试';
+      btn.textContent = '✨ 开始整理'; btn.disabled = false;
+    }
+  },
   'modal-cancel'() { closeModal(); },
 };
 
@@ -1186,7 +1296,7 @@ $('#import-file').addEventListener('change', e => {
       if (!confirm('导入会覆盖当前所有数据，确定？')) return;
       data = d;
       data.tasks = data.tasks || {}; data.habits = data.habits || [];
-      data.plans = data.plans || {}; data.goals = data.goals || []; data.minutes = data.minutes || []; data.minutes = data.minutes || [];
+      data.plans = data.plans || {}; data.goals = data.goals || []; data.minutes = data.minutes || [];
       save(); applyTheme(); rerender();
       alert('导入成功 ✅');
     } catch (err) { alert('导入失败：不是有效的备份文件'); }
@@ -1253,6 +1363,9 @@ async function api(path, opts = {}) {
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw Object.assign(new Error(j.error || ('HTTP ' + r.status)), { status: r.status, payload: j });
   return j;
+}
+function aiCall(kind, text) {
+  return api('ai', { method: 'POST', body: { kind, text, today: todayStr(), dict: data.aiDict || '' } });
 }
 
 function renderCloudUI() {
